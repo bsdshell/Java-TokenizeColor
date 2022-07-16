@@ -13,6 +13,7 @@ import java.util.stream.*;
 import java.util.stream.Collectors;
 import static classfile.Token.*;
 import static classfile.NameType.*;
+import static classfile.Tuple.*;
 
 class InxStr{
     int inx;
@@ -29,6 +30,24 @@ class InxStr{
     }
 }
 
+enum TokenX{
+    StringSQ,
+    StringDQ,
+    Integer,
+    FloatNum,
+    AlphabetDigit,
+    BracketLeft,
+    BracketRight,
+}
+
+final class Symbol{
+    static char BracketLeft = '(';
+    static char BracketRight = ')';
+}
+
+class Type{
+}
+
 public class TokenizeColor2{
     public static void main(String[] args) {
         test0();
@@ -36,44 +55,61 @@ public class TokenizeColor2{
     public static void test0(){
         beg();
         {
-            String s = "123  ab22 'ee'\"bef\"zz  abc123 3.14159 2.7 3.33 2 ab123";
+            List<Tuple<String, TokenX>> ls = new ArrayList<>();
+            // Tuple<String, TokenX> tuple = new Tuple<>("a", TokenX.String);
+
+            String s = "123  ab22 'ee'\"bef\"zz  abc123 3.14159 2.7 3.33 2 ab123 ( abc (";
             int i = 0;
             while(i < len(s)){
                 char c = s.charAt(i);
                 if(c == '"'){
-                    InxStr s1 = string(i, s);
-                    pl("\"ab\"    => s1=" + s1);
-                    if(s1 != null){
-                        i = s1.inx;
+                    InxStr ss = string(i, s);
+                    pl("\"ab\"    => ss=" + ss);
+                    if(ss != null){
+                        ls.add(new Tuple(ss.str, TokenX.StringDQ));
+                        i = ss.inx;
                     }
                 }else if(c == '\''){
-                    InxStr s2 = string2(i, s);
-                    pl("'ab'      => s2=" + s2);
-                    if(s2 != null){
-                        i = s2.inx;
+                    InxStr ss = string2(i, s);
+                    pl("'ab'      => ss=" + ss);
+                    if(ss != null){
+                        ls.add(new Tuple(ss.str, TokenX.StringSQ));
+                        i = ss.inx;
                     }
                 }else if(isLetter(c)){
-                    InxStr s3 = alphabetDigit(i, s);
-                    pl("abc123     => s3=" + s3);
-                    if(s3 != null){
-                        i = s3.inx;
+                    InxStr ss = alphabetDigit(i, s);
+                    pl("abc123     => ss=" + ss);
+                    if(ss != null){
+                        ls.add(new Tuple(ss.str, TokenX.AlphabetDigit));
+                        i = ss.inx;
                     }
                 }else if(isDigit(c)){
-                    InxStr s3 = floatNum(i, s);
-                    pl("3.14159     => s3=" + s3);
-                    if(s3 != null){
-                        i = s3.inx;
+                    InxStr ss = floatNum(i, s);
+                    pl("3.14159     => ss=" + ss);
+                    if(ss != null){
+                        ls.add(new Tuple(ss.str, TokenX.FloatNum));
+                        i = ss.inx;
                     }else {
-                        InxStr s4 = integer(i, s);
-                        pl("123        => s3=" + s4);
-                        if(s4 != null){
-                            i = s4.inx;
+                        InxStr s1 = integer(i, s);
+                        pl("123        => s1=" + s1);
+                        if(s1 != null){
+                            ls.add(new Tuple(s1.str, TokenX.Integer));
+                            i = s1.inx;
                         }
+                    }
+                }else if(c == Symbol.BracketLeft){
+                    InxStr ss = bracketLeft(i, s);          
+                    if(ss != null){
+                        ls.add(new Tuple(ss.str, TokenX.Integer));
+                        i = ss.inx;
                     }
                 }else{
                     i++;
                 }
             }
+            fl("lr");
+            var lr = map(x -> x.x, ls);
+            pl(lr);
         }
         end();
     }
@@ -119,6 +155,39 @@ public class TokenizeColor2{
         return two;
     }
 
+    public static InxStr bracketLeft(int inx, String s){
+        InxStr two = null;
+        int state = 0;
+        String str = "";
+        boolean done = false;
+        int i = inx;
+        while(i < len(s) && !done){
+            if(state == 0 && s.charAt(i) == '('){
+                state = 1;
+                str += charToStr(s.charAt(i));
+            }else if(state == 1 && s.charAt(i) == '('){
+                state = 1;
+                str += charToStr(s.charAt(i));
+            }else if(state == 1 && s.charAt(i) != '('){
+                state = 2;
+                done = true;
+            }
+            i++;
+        }
+        boolean endOfLine = i == len(s);
+        /*
+                                                i
+                                                + -> End of string
+                                                ↓ 
+                                   + ->   "abc("x
+                                   ↓ 
+        */
+        if(state == 2 || endOfLine && state == 1){
+            two = new InxStr(i, str);
+        }
+        return two;
+    }
+
     public static InxStr string2(int inx, String s){
         InxStr two = null;
         int state = 0;
@@ -143,6 +212,7 @@ public class TokenizeColor2{
         }
         return two;
     }
+
 
     /**
         ab12 ✓  
